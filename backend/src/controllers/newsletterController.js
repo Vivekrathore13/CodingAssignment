@@ -1,32 +1,26 @@
 const Newsletter = require('../models/Newsletter');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
 
-const subscribe = async (req, res) => {
-    try {
-        const { email } = req.body;
-        if (!email) {
-            return res.status(400).json({ message: 'Email is required' });
-        }
-        // Check duplication
-        const existing = await Newsletter.findOne({ email });
-        if (existing) {
-            return res.status(400).json({ message: 'Email already subscribed' });
-        }
-
-        const newSub = new Newsletter({ email });
-        await newSub.save();
-        res.status(201).json({ message: 'Subscribed successfully' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+const subscribe = catchAsync(async (req, res, next) => {
+    const { email } = req.body;
+    if (!email) {
+        return next(new AppError('Email is required', 400));
     }
-};
-
-const getSubscribers = async (req, res) => {
-    try {
-        const subscribers = await Newsletter.find().sort({ createdAt: -1 });
-        res.json(subscribers);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    // Check duplication
+    const existing = await Newsletter.findOne({ email });
+    if (existing) {
+        return next(new AppError('Email already subscribed', 400));
     }
-};
+
+    const newSub = new Newsletter({ email });
+    await newSub.save();
+    res.status(201).json({ message: 'Subscribed successfully' });
+});
+
+const getSubscribers = catchAsync(async (req, res, next) => {
+    const subscribers = await Newsletter.find().sort({ createdAt: -1 });
+    res.json(subscribers);
+});
 
 module.exports = { subscribe, getSubscribers };

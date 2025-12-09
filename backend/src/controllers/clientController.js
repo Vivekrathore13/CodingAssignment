@@ -1,49 +1,41 @@
 const Client = require('../models/Client');
+const catchAsync = require('../utils/catchAsync');
+const AppError = require('../utils/AppError');
 
-const getClients = async (req, res) => {
-    try {
-        const clients = await Client.find().sort({ createdAt: -1 });
-        res.json(clients);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
+const getClients = catchAsync(async (req, res, next) => {
+    const clients = await Client.find().sort({ createdAt: -1 });
+    res.json(clients);
+});
 
-const createClient = async (req, res) => {
-    try {
-        const { name, description, designation, image } = req.body;
-        if (!name || !description || !designation || !image) {
-            return res.status(400).json({ message: 'All fields are required' });
-        }
-        const newClient = new Client({ name, description, designation, image });
-        await newClient.save();
-        res.status(201).json(newClient);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+const createClient = catchAsync(async (req, res, next) => {
+    const { name, description, designation, image } = req.body;
+    if (!name || !description || !designation || !image) {
+        return next(new AppError('All fields are required', 400));
     }
-};
+    const newClient = new Client({ name, description, designation, image });
+    await newClient.save();
+    res.status(201).json(newClient);
+});
 
-const updateClient = async (req, res) => {
-    try {
-        const { name, description, designation } = req.body;
-        const updatedClient = await Client.findByIdAndUpdate(
-            req.params.id,
-            { name, description, designation },
-            { new: true }
-        );
-        res.json(updatedClient);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+const updateClient = catchAsync(async (req, res, next) => {
+    const { name, description, designation } = req.body;
+    const updatedClient = await Client.findByIdAndUpdate(
+        req.params.id,
+        { name, description, designation },
+        { new: true, runValidators: true }
+    );
+    if (!updatedClient) {
+        return next(new AppError('No client found with that ID', 404));
     }
-};
+    res.json(updatedClient);
+});
 
-const deleteClient = async (req, res) => {
-    try {
-        await Client.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Client deleted' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+const deleteClient = catchAsync(async (req, res, next) => {
+    const client = await Client.findByIdAndDelete(req.params.id);
+    if (!client) {
+        return next(new AppError('No client found with that ID', 404));
     }
-};
+    res.json({ message: 'Client deleted' });
+});
 
 module.exports = { getClients, createClient, updateClient, deleteClient };
